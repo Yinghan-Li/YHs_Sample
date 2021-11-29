@@ -45,15 +45,15 @@ uint32_t smem_u32addr(const void *smem_ptr) {
 }
 
 __device__ __forceinline__
-void ldg32_ca(float &reg, const void *ptr, bool guard) {
+void ldg32_nc(float &reg, const void *ptr, bool guard) {
     asm volatile (
         "{.reg .pred p;\n"
         " setp.ne.b32 p, %2, 0;\n"
 #if __CUDACC_VER_MAJOR__ >= 11 && __CUDACC_VER_MINOR__ >= 4 && \
     __CUDA_ARCH__ >= 750
-        " @p ld.global.ca.L2::128B.f32 %0, [%1];}\n"
+        " @p ld.global.nc.L2::128B.f32 %0, [%1];}\n"
 #else
-        " @p ld.global.ca.f32 %0, [%1];}\n"
+        " @p ld.global.nc.f32 %0, [%1];}\n"
 #endif
         : "=f"(reg)
         : "l"(ptr), "r"((int)guard)
@@ -61,16 +61,16 @@ void ldg32_ca(float &reg, const void *ptr, bool guard) {
 }
 
 __device__ __forceinline__
-void ldg32_ca_0(float &reg, const void *ptr, bool guard) {
+void ldg32_nc_0(float &reg, const void *ptr, bool guard) {
     asm volatile (
         "{.reg .pred p;\n"
         " setp.ne.b32 p, %2, 0;\n"
         " @!p mov.b32 %0, 0;\n"
 #if __CUDACC_VER_MAJOR__ >= 11 && __CUDACC_VER_MINOR__ >= 4 && \
     __CUDA_ARCH__ >= 750
-        " @p ld.global.ca.L2::128B.f32 %0, [%1];}\n"
+        " @p ld.global.nc.L2::128B.f32 %0, [%1];}\n"
 #else
-        " @p ld.global.ca.f32 %0, [%1];}\n"
+        " @p ld.global.nc.f32 %0, [%1];}\n"
 #endif
         : "=f"(reg)
         : "l"(ptr), "r"((int)guard)
@@ -317,7 +317,7 @@ void sgemm_128x128x8_kernel(const float *A,
         for (int i = 0; i < 4; ++i) {
             bool guard = (A_ldg_guard & (1u << i)) != 0 &&
                          threadIdx.x % 8 < first_k_tile;
-            ldg32_ca_0(A_ldg_reg[i],
+            ldg32_nc_0(A_ldg_reg[i],
                        A_ldg_ptr + i * A_ldg_step,
                        guard);
         }
@@ -329,7 +329,7 @@ void sgemm_128x128x8_kernel(const float *A,
         for (int i = 0; i < 4; ++i) {
             bool guard = (B_ldg_guard & (1u << i)) != 0 &&
                          threadIdx.x / 32 < first_k_tile;
-            ldg32_ca_0(B_ldg_reg[i],
+            ldg32_nc_0(B_ldg_reg[i],
                        B_ldg_ptr + i * 32 * sizeof(float),
                        guard);
         }
@@ -412,14 +412,14 @@ void sgemm_128x128x8_kernel(const float *A,
             if (k_frag == 0) {
                 #pragma unroll
                 for (int i = 0; i < 4; ++i) {
-                    ldg32_ca(A_ldg_reg[i],
+                    ldg32_nc(A_ldg_reg[i],
                              A_ldg_ptr + i * A_ldg_step,
                              (A_ldg_guard & (1u << i)) != 0);
                 }
 
                 #pragma unroll
                 for (int i = 0; i < 4; ++i) {
-                    ldg32_ca(B_ldg_reg[i],
+                    ldg32_nc(B_ldg_reg[i],
                              B_ldg_ptr + i * 32 * sizeof(float),
                              (B_ldg_guard & (1u << i)) != 0);
                 }
