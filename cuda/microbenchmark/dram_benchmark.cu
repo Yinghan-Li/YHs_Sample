@@ -93,14 +93,14 @@ void benchmark(size_t size_in_byte) {
     float time_ms = 0.f;
 
     // warmup
-    read_kernel<BLOCK, 2><<<grid, BLOCK>>>(ws, nullptr);
-    write_kernel<BLOCK, 2><<<grid, BLOCK>>>(ws);
-    copy_kernel<BLOCK, 2><<<grid / 2, BLOCK>>>(ws, ws + size_in_byte / 2);
+    read_kernel<BLOCK, LDG_UNROLL><<<grid, BLOCK>>>(ws, nullptr);
+    write_kernel<BLOCK, LDG_UNROLL><<<grid, BLOCK>>>(ws);
+    copy_kernel<BLOCK, LDG_UNROLL><<<grid / 2, BLOCK>>>(ws, ws + size_in_byte / 2);
 
     // read
     cudaEventRecord(start);
     for (int i = BENCH_ITER - 1; i >= 0; --i) {
-        read_kernel<BLOCK, 2><<<grid, BLOCK>>>(ws + i * MEMORY_OFFSET, nullptr);
+        read_kernel<BLOCK, LDG_UNROLL><<<grid, BLOCK>>>(ws + i * MEMORY_OFFSET, nullptr);
     }
     cudaEventRecord(stop);
 
@@ -111,7 +111,7 @@ void benchmark(size_t size_in_byte) {
     // write
     cudaEventRecord(start);
     for (int i = BENCH_ITER - 1; i >= 0; --i) {
-        write_kernel<BLOCK, 2><<<grid, BLOCK>>>(ws + i * MEMORY_OFFSET);
+        write_kernel<BLOCK, LDG_UNROLL><<<grid, BLOCK>>>(ws + i * MEMORY_OFFSET);
     }
     cudaEventRecord(stop);
 
@@ -123,7 +123,7 @@ void benchmark(size_t size_in_byte) {
     // copy
     cudaEventRecord(start);
     for (int i = BENCH_ITER - 1; i >= 0; --i) {
-        copy_kernel<BLOCK, 2><<<grid / 2, BLOCK>>>(
+        copy_kernel<BLOCK, LDG_UNROLL><<<grid / 2, BLOCK>>>(
             ws + i * MEMORY_OFFSET,
             ws + i * MEMORY_OFFSET + size_in_byte / 2);
     }
