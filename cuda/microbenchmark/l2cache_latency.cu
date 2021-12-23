@@ -9,9 +9,11 @@ const int STRIDE = 128;
 
 template <int ROUND>
 __global__ __launch_bounds__(32, 1)
-void l2_latency_kernel(const int *stride, int *ret, uint32_t *clk) {
+void l2_latency_kernel(const uint32_t *stride,
+                       uint32_t *ret,
+                       uint32_t *clk) {
     const char *ldg_ptr = reinterpret_cast<const char *>(stride + threadIdx.x);
-    int val;
+    uint32_t val;
 
     // populate TLB
     asm volatile (
@@ -61,20 +63,22 @@ void l2_latency_kernel(const int *stride, int *ret, uint32_t *clk) {
 }
 
 int main() {
-    static_assert(STRIDE >= 32 * sizeof(int), "invalid 'STRIDE'");
+    static_assert(STRIDE >= 32 * sizeof(uint32_t) &&
+                  STRIDE % sizeof(uint32_t) == 0,
+                  "invalid 'STRIDE'");
 
-    const int STRIDE_MEM_SIZE = (ROUND + 1) * STRIDE;
+    const uint32_t STRIDE_MEM_SIZE = (ROUND + 1) * STRIDE;
 
-    int *h_stride;
+    uint32_t *h_stride;
     cudaMallocHost(&h_stride, STRIDE_MEM_SIZE);
 
-    for (int i = 0; i < STRIDE_MEM_SIZE / sizeof(int); ++i) {
+    for (int i = 0; i < STRIDE_MEM_SIZE / sizeof(uint32_t); ++i) {
         h_stride[i] = STRIDE;
     }
 
-    int *d_stride, *d_ret;
+    uint32_t *d_stride, *d_ret;
     cudaMalloc(&d_stride, STRIDE_MEM_SIZE);
-    cudaMalloc(&d_ret, sizeof(int));
+    cudaMalloc(&d_ret, sizeof(uint32_t));
     cudaMemcpy(d_stride, h_stride, STRIDE_MEM_SIZE, cudaMemcpyHostToDevice);
 
     uint32_t *d_clk;
@@ -90,7 +94,7 @@ int main() {
 
     uint32_t h_clk[32];
     cudaMemcpy(h_clk, d_clk, 32 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
-    printf("DRAM latency %d cycles\n", h_clk[0] / ROUND);
+    printf("l2 cache latency %d cycles\n", h_clk[0] / ROUND);
 
     cudaFree(d_stride);
     cudaFree(d_ret);
