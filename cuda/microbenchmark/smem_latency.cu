@@ -2,7 +2,7 @@
 #include <cstdint>
 
 const int WARMUP = 100;
-// number of timed LDS instructions
+// number of LDS instructions to be timed
 const int ROUND = 50;
 
 template <int ROUND>

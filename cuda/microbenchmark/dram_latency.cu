@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstdint>
 
-// number of timed LDG instructions
+// number of LDG instructions to be timed
 const int ROUND = 10;
 // stride in byte between LDG instructions
 // should be greater than L2 cache line size to avoid L2 cache hit

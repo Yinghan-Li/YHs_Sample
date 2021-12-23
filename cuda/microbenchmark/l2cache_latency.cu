@@ -2,7 +2,7 @@
 #include <cstdint>
 
 const int WARMUP = 100;
-// number of timed LDG instructions
+// number of LDG instructions to be timed
 const int ROUND = 10;
 // stride in byte between LDG instructions
 const int STRIDE = 128;
