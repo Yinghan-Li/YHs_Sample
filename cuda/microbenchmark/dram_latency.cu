@@ -89,7 +89,7 @@ void dram_latency_kernel(const uint32_t *stride,
          * dependent LDG instructions to make sure that
          * LDG latency can not be hidden by parallel LDG.
          * 
-         * IADD/IMAD/XMAD's latency is much smaller than dram and can be ignored.
+         * IADD/IMAD/XMAD's latency is much lower than dram and can be ignored.
          */
         ldg_ptr += val;
     }

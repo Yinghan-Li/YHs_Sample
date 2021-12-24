@@ -14,22 +14,22 @@ build:
 # for volta GPU:
 $ sh build.sh dram|l2cache_bandwidth.cu 70
 # or
-$ sh build.sh dram|l2cache|smem_latency.cu 70
+$ sh build.sh dram|l2cache|l1cache|smem_latency.cu 70
 
 #for turing GPU:
 $ sh build.sh dram|l2cache_bandwidth.cu 75
 # or
-$ sh build.sh dram|l2cache|smem_latency.cu 75
+$ sh build.sh dram|l2cache|l1cache|smem_latency.cu 75
 
 # for GA100 GPU:
 $ sh build.sh dram|l2cache_bandwidth.cu 80
 # or
-$ sh build.sh dram|l2cache|smem_latency.cu 80
+$ sh build.sh dram|l2cache|l1cache|smem_latency.cu 80
 
 # for GA10x(x >= 2) GPU:
 $ sh build.sh dram|l2cache_bandwidth.cu 86
 # or
-$ sh build.sh dram|l2cache|smem_latency.cu 86
+$ sh build.sh dram|l2cache|l1cache|smem_latency.cu 86
 
 ```
 

@@ -37,6 +37,10 @@ void smem_latency_kernel(const uint32_t *addr,
 
     #pragma unroll
     for (int i = 0; i < ROUND; ++i) {
+        /*
+         * dependent LDS instructions to make sure that
+         * LDS latency can not be hidden by parallel LDS.
+         */
         asm volatile (
             "ld.shared.b32 %0, [%0];\n"
             : "+r"(smem_addr) : : "memory"
