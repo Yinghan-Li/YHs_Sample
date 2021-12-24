@@ -1,7 +1,7 @@
 #include <cstdio>
 
-// accessed data size in byte
-const int DATA_SIZE_IN_BYTE = (1lu << 20) * 4;
+// accessed data size in byte, should be smaller than l2 cache size
+const int DATA_SIZE_IN_BYTE = (1lu << 20) * 2;
 // number of LDG instructions
 const int N_LDG = (1lu << 20) * 512;
 

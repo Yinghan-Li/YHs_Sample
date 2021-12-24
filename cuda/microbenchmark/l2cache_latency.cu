@@ -94,7 +94,7 @@ int main() {
 
     uint32_t h_clk[32];
     cudaMemcpy(h_clk, d_clk, 32 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
-    printf("l2 cache latency %d cycles\n", h_clk[0] / ROUND);
+    printf("l2 cache latency %u cycles\n", h_clk[0] / ROUND);
 
     cudaFree(d_stride);
     cudaFree(d_ret);
