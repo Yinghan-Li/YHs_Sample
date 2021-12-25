@@ -1,7 +1,7 @@
 # YHs_Sample
 
-Samples to illustrate some optimization methods for SIMT/SIMD processors
+Li.Yinghan's code samples to illustrate some optimization techniques for SIMT/SIMD processors
 
 ---
 
-/cuda: cuda samples for NVIDIA GPU
+`/cuda`: cuda samples for NVIDIA GPU
