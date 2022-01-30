@@ -244,14 +244,14 @@ void C_tile_wb(StgFrag C_frag,
  *
  */
 __global__ __launch_bounds__(256)
-void sgemm_128x256x8_kernel(const float *A,
-                            const float *B,
-                            float *C,
-                            uint32_t m,
-                            uint32_t n,
-                            uint32_t k,
-                            uint32_t A_ldg_step,    // k * sizeof(float) * 32
-                            uint32_t B_ldg_step) {  // n * sizeof(float) * 8
+void ampere_sgemm_128x256x8_kernel(
+        const float *A,
+        const float *B,
+        float *C,
+        uint32_t m,
+        uint32_t n,
+        uint32_t k,
+        uint32_t B_ldg_step) {  // n * sizeof(float) * 8
     /*
      * matrix A & B thread block tile shared memory (double buffer)
      * matrix A: 132 * 8 * 4Byte/item * double buffer = 4.125KB * 2
@@ -290,14 +290,28 @@ void sgemm_128x256x8_kernel(const float *A,
     const char *A_ldg_ptr = (const char *)(
         A + (blockIdx.y * 128 + threadIdx.x / 8) * k + threadIdx.x % 8);
     const char *B_ldg_ptr = (const char *)(
-        B + (threadIdx.x / 32) * n + blockIdx.x * 256 + threadIdx.x % 32);
+        B + (threadIdx.x / 128) * n + blockIdx.x * 256 + threadIdx.x % 128);
+
+    // A_ldg_offset
+    uint32_t A_ldg_offset[4];
+    #pragma unroll
+    for (int i = 0; i < 4; ++i) {
+        A_ldg_offset[i] = i * 32 * k * sizeof(float);
+    }
+
+    // B_ldg_offset
+    uint32_t B_ldg_offset[4];
+    #pragma unroll
+    for (int i = 0; i < 4; ++i) {
+        B_ldg_offset[i] = i * 2 * n * sizeof(float);
+    }
 
     // A_tile & B_tile sts/lds pointer
     // using uint32_t pointer for faster double buffer switch
     uint32_t A_sts_addr = smem_u32addr(
         A_smem + (threadIdx.x % 8) * 132 + (threadIdx.x / 8));
     uint32_t B_sts_addr = smem_u32addr(
-        B_smem + (threadIdx.x / 32) * 256 + (threadIdx.x % 32));
+        B_smem + (threadIdx.x / 128) * 256 + (threadIdx.x % 128));
 
     uint32_t A_lds_addr = smem_u32addr(
         A_smem + (warp_id / 4) * 64 + mma_tid_y * 4);
@@ -316,8 +330,8 @@ void sgemm_128x256x8_kernel(const float *A,
 
     uint32_t B_ldg_guard = 0;
     #pragma unroll
-    for (int i = 0; i < 8; ++i) {
-        int n_idx = blockIdx.x * 256 + threadIdx.x % 32 + i * 32;
+    for (int i = 0; i < 2; ++i) {
+        int n_idx = blockIdx.x * 256 + threadIdx.x % 128 + i * 128;
         if (n_idx < n) {
             B_ldg_guard |= (1u << i);
         }
@@ -335,7 +349,7 @@ void sgemm_128x256x8_kernel(const float *A,
             uint32_t src_size = threadIdx.x % 8 < first_k_tile ? 4 : 0;
 
             ldgsts32(A_sts_addr + i * 32 * sizeof(float),
-                     A_ldg_ptr + i * A_ldg_step,
+                     A_ldg_ptr + A_ldg_offset[i],
                      src_size,
                      (A_ldg_guard & (1u << i)) != 0);
         }
@@ -343,13 +357,17 @@ void sgemm_128x256x8_kernel(const float *A,
         A_ldg_ptr += first_k_tile * sizeof(float);
 
         #pragma unroll
-        for (int i = 0; i < 8; ++i) {
-            uint32_t src_size = threadIdx.x / 32 < first_k_tile ? 4 : 0;
+        for (int i = 0; i < 4; ++i) {
+            uint32_t src_size = i * 2 + threadIdx.x / 128 < first_k_tile ? 4 : 0;
 
-            ldgsts32(B_sts_addr + i * 32 * sizeof(float),
-                     B_ldg_ptr + i * 32 * sizeof(float),
+            ldgsts32(B_sts_addr + i * 2 * 256 * sizeof(float),
+                     B_ldg_ptr + B_ldg_offset[i],
                      src_size,
-                     (B_ldg_guard & (1u << i)) != 0);
+                     (B_ldg_guard & (1u << 0)) != 0);
+            ldgsts32(B_sts_addr + (i * 2 * 256 + 128) * sizeof(float),
+                     B_ldg_ptr + B_ldg_offset[i] + 128 * sizeof(float),
+                     src_size,
+                     (B_ldg_guard & (1u << 1)) != 0);
         }
 
         B_ldg_ptr += n * first_k_tile * sizeof(float);
@@ -431,15 +449,15 @@ void sgemm_128x256x8_kernel(const float *A,
             // load next A&B tile
             if (k_frag < 4) {
                 ldgsts32(A_sts_addr + k_frag * 32 * sizeof(float),
-                         A_ldg_ptr + k_frag * A_ldg_step,
+                         A_ldg_ptr + A_ldg_offset[k_frag],
                          (A_ldg_guard & (1u << k_frag)) != 0);
 
-                ldgsts32(B_sts_addr + k_frag * 32 * sizeof(float),
-                         B_ldg_ptr + k_frag * 32 * sizeof(float),
-                         (B_ldg_guard & (1u << k_frag)) != 0);
-                ldgsts32(B_sts_addr + (k_frag + 4) * 32 * sizeof(float),
-                         B_ldg_ptr + (k_frag + 4) * 32 * sizeof(float),
-                         (B_ldg_guard & (1u << (k_frag + 4))) != 0);
+                ldgsts32(B_sts_addr + k_frag * 2 * 256 * sizeof(float),
+                         B_ldg_ptr + B_ldg_offset[k_frag],
+                         (B_ldg_guard & (1u << 0)) != 0);
+                ldgsts32(B_sts_addr + (k_frag * 2 * 256 + 128) * sizeof(float),
+                         B_ldg_ptr + B_ldg_offset[k_frag] + 128 * sizeof(float),
+                         (B_ldg_guard & (1u << 1)) != 0);
             }
 
             // FFMA loop
@@ -590,16 +608,14 @@ int main() {
     dim3 grid((n + 255) / 256, (m + 127) / 128);
 
     // warmup
-    sgemm_128x256x8_kernel<<<grid, 256>>>(
+    ampere_sgemm_128x256x8_kernel<<<grid, 256>>>(
         d_A, d_B, d_C, m, n, k,
-        k * sizeof(float) * 32,
         n * sizeof(float) * 8);
 
     cudaEventRecord(start);
     for (int i = 0; i < n_iter; ++i) {
-        sgemm_128x256x8_kernel<<<grid, 256>>>(
+        ampere_sgemm_128x256x8_kernel<<<grid, 256>>>(
             d_A, d_B, d_C, m, n, k,
-            k * sizeof(float) * 32,
             n * sizeof(float) * 8);
     }
     cudaEventRecord(end);
