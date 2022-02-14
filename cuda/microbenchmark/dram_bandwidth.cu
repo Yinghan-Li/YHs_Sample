@@ -5,7 +5,7 @@ const int MEMORY_OFFSET = (1u << 20) * 16;
 const int BENCH_ITER = 100;
 
 const int BLOCK = 128;
-const int LDG_UNROLL = 2;
+const int LDG_UNROLL = 1;
 
 __device__ __forceinline__
 uint4 ldg_cs(const void *ptr) {
