@@ -78,7 +78,7 @@ void ldg32_nc_0(float &reg, const void *ptr, bool guard) {
 }
 
 __device__ __forceinline__
-void stg32(const float &reg, const void *ptr, bool guard) {
+void stg32(const float &reg, void *ptr, bool guard) {
     asm volatile (
         "{.reg .pred p;\n"
         " setp.ne.b32 p, %2, 0;\n"
