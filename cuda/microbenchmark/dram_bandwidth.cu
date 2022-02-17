@@ -32,14 +32,19 @@ __global__ void read_kernel(const void *x, void *y) {
     uint32_t idx = blockIdx.x * BLOCK * VEC_UNROLL + threadIdx.x;
 
     const uint4 *ldg_ptr = (const uint4 *)x + idx;
+    uint4 reg[VEC_UNROLL];
 
     #pragma unroll
     for (int i = 0; i < VEC_UNROLL; ++i) {
-        uint4 reg = ldg_cs(ldg_ptr + i * BLOCK);
+        reg[i] = ldg_cs(ldg_ptr + i * BLOCK);
+    }
 
-        // dummy STG
-        if (reg.x != 0)
-            stg_cs(reg, y);
+    // dummy STG
+    #pragma unroll
+    for (int i = 0; i < VEC_UNROLL; ++i) {
+        if (reg[i].x != 0) {
+            stg_cs(reg[i], (uint4 *)y + i);
+        }
     }
 }
 
@@ -62,11 +67,16 @@ __global__ void copy_kernel(const void *x, void *y) {
 
     const uint4 *ldg_ptr = (const uint4 *)x + idx;
     uint4 *stg_ptr = (uint4 *)y + idx;
+    uint4 reg[VEC_UNROLL];
 
     #pragma unroll
     for (int i = 0; i < VEC_UNROLL; ++i) {
-        uint4 reg = ldg_cs(ldg_ptr + i * BLOCK);
-        stg_cs(reg, stg_ptr + i * BLOCK);
+        reg[i] = ldg_cs(ldg_ptr + i * BLOCK);
+    }
+
+    #pragma unroll
+    for (int i = 0; i < VEC_UNROLL; ++i) {
+        stg_cs(reg[i], stg_ptr + i * BLOCK);
     }
 }
 

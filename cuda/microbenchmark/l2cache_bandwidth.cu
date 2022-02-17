@@ -24,20 +24,28 @@ template <int BLOCK, int UNROLL, int N_DATA>
 __global__ void kernel(const int *x, int *y) {
     int offset = (BLOCK * UNROLL * blockIdx.x + threadIdx.x) % N_DATA;
     const int *ldg_ptr = x + offset;
+    int reg[UNROLL];
 
     #pragma unroll
     for (int i = 0; i < UNROLL; ++i) {
-        int xv = ldg_cg(ldg_ptr + BLOCK * i);
-        if (xv != 0) {
-            *y = xv;
-        }
+        reg[i] = ldg_cg(ldg_ptr + BLOCK * i);
+    }
+
+    int sum = 0;
+    #pragma unroll
+    for (int i = 0; i < UNROLL; ++i) {
+        sum += reg[i];
+    }
+
+    if (sum != 0) {
+        *y = sum;
     }
 }
 
 int main() {
     const int N_DATA = DATA_SIZE_IN_BYTE / sizeof(int);
 
-    const int UNROLL = 8;
+    const int UNROLL = 16;
     const int BLOCK = 128;
 
     static_assert(N_DATA >= UNROLL * BLOCK && N_DATA % (UNROLL * BLOCK) == 0,
