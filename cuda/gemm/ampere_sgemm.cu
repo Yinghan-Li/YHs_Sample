@@ -152,7 +152,7 @@ void C_tile_wb(StgFrag C_frag,
                C_frag.data[i][1],
                C_frag.data[i][2],
                C_frag.data[i][3],
-               C_sts_addr + i * 8 * sizeof(float4));
+               C_sts_addr + i * 9 * sizeof(float4));
     }
 
     __syncthreads();
@@ -161,7 +161,7 @@ void C_tile_wb(StgFrag C_frag,
 
     #pragma unroll
     for (int i = 0; i < 16; ++i) {
-        stg32(C_lds_ptr[i * 32],
+        stg32(C_lds_ptr[i * 36],
               C_stg_ptr + i * n,
               i < m_guard && n_idx < n);
     }
@@ -521,9 +521,9 @@ void ampere_sgemm_128x256x8_kernel(
     }
 
     // C_tile write back, reuse A&B tile shared memory buffer
-    uint32_t C_sts_addr = smem_u32addr((float4 *)(smem + warp_id * 2048) +
-                                       mma_tid_y * 4 * 8 + mma_tid_x);
-    const float *C_lds_ptr = (float *)(smem + warp_id * 2048) + lane_id;
+    uint32_t C_sts_addr = smem_u32addr((float4 *)(smem + warp_id * 4096) +
+                                       mma_tid_y * 4 * 9 + mma_tid_x);
+    const float *C_lds_ptr = (float *)(smem + warp_id * 4096) + lane_id;
 
     uint32_t m_idx = blockIdx.y * 128 + warp_id / 4 * 64;
     uint32_t n_idx = blockIdx.x * 256 + warp_id % 4 * 64 + lane_id;
@@ -547,14 +547,14 @@ void ampere_sgemm_128x256x8_kernel(
                            C_frag[i * 4 + p][j * 4 + 1],
                            C_frag[i * 4 + p][j * 4 + 2],
                            C_frag[i * 4 + p][j * 4 + 3],
-                           C_sts_addr + p * 8 * sizeof(float4));
+                           C_sts_addr + p * 9 * sizeof(float4));
                 }
 
                 __syncthreads();
 
                 #pragma unroll
                 for (int p = 0; p < 16; ++p) {
-                    stg32(C_lds_ptr[p * 32],
+                    stg32(C_lds_ptr[p * 36],
                           C_stg_ptr + (i * 16 + p) * n + j * 32,
                           j * 32 < n_guard);
                 }
