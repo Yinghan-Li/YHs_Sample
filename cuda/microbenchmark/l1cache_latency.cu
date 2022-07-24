@@ -87,6 +87,8 @@ int main() {
     cudaFree(d_ret);
     cudaFree(d_clk);
     cudaFreeHost(h_ptr);
+
+    return 0;
 }
 
 

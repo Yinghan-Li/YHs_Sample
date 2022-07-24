@@ -5,16 +5,11 @@ const int WARMUP = 100;
 // number of LDS instructions to be timed
 const int ROUND = 50;
 
-template <int ROUND>
 __global__ __launch_bounds__(16, 1)
-void smem_latency_kernel(const uint32_t *addr,
-                         uint32_t *ret,
-                         uint32_t *clk) {
+void smem_latency_kernel(const uint32_t *addr, uint32_t *ret, uint32_t *clk) {
     __shared__ uint32_t smem[16];
 
     smem[threadIdx.x] = addr[threadIdx.x];
-
-    asm volatile ("bar.sync 0;\n" : : : "memory");
 
     uint32_t start;
     uint32_t stop;
@@ -33,7 +28,6 @@ void smem_latency_kernel(const uint32_t *addr,
         "mov.u32 %0, %%clock;\n"
         : "=r"(start) : : "memory"
     );
-
 
     #pragma unroll
     for (int i = 0; i < ROUND; ++i) {
@@ -79,11 +73,11 @@ int main() {
 
     // pupulate l0/l1 i-cache
     for (int i = 0; i < WARMUP; ++i) {
-        smem_latency_kernel<ROUND><<<1, 16>>>(d_addr, d_ret, d_clk);
+        smem_latency_kernel<<<1, 16>>>(d_addr, d_ret, d_clk);
     }
 
     // shared memory latency benchmark
-    smem_latency_kernel<ROUND><<<1, 16>>>(d_addr, d_ret, d_clk);
+    smem_latency_kernel<<<1, 16>>>(d_addr, d_ret, d_clk);
 
     uint32_t h_clk[16];
     cudaMemcpy(h_clk, d_clk, 16 * sizeof(uint32_t), cudaMemcpyDeviceToHost);
@@ -93,6 +87,8 @@ int main() {
     cudaFree(d_ret);
     cudaFree(d_clk);
     cudaFreeHost(h_addr);
+
+    return 0;
 }
 
 
